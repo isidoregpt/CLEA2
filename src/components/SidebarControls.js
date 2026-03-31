@@ -151,8 +151,8 @@ const SidebarControls = ({
 
     {/* ── Zoom viewer ── */}
     <Section title="Zoom Viewer">
-      <Slider label="Region size (px)" min={20} max={150} step={5} value={zoomSize} onChange={(v) => setZoomSize(Math.round(v))} display={zoomSize + ' px'} />
-      <Slider label="Zoom factor" min={2} max={8} step={1} value={zoomFactor} onChange={(v) => setZoomFactor(Math.round(v))} display={zoomFactor + '×'} />
+      <Slider label="Region size (px)" min={20} max={300} step={5} value={zoomSize} onChange={(v) => setZoomSize(Math.round(v))} display={zoomSize + ' px'} />
+      <Slider label="Zoom factor" min={2} max={12} step={1} value={zoomFactor} onChange={(v) => setZoomFactor(Math.round(v))} display={zoomFactor + '×'} />
     </Section>
 
     {/* ── Animation ── */}

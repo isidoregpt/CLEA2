@@ -381,10 +381,12 @@ export const extractZoomRegion = (image, centerX, centerY, zoomSize = 60, zoomFa
     const h = bottom - top;
 
     const canvas = document.createElement('canvas');
-    canvas.width  = w * zoomFactor;
-    canvas.height = h * zoomFactor;
+    const dpr = window.devicePixelRatio || 2;
+    canvas.width  = w * zoomFactor * dpr;
+    canvas.height = h * zoomFactor * dpr;
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingQuality = 'low';
     ctx.drawImage(image, left, top, w, h, 0, 0, canvas.width, canvas.height);
 
     // Crosshair
@@ -395,6 +397,7 @@ export const extractZoomRegion = (image, centerX, centerY, zoomSize = 60, zoomFa
     ctx.beginPath(); ctx.moveTo(0, cy2); ctx.lineTo(canvas.width, cy2);  ctx.stroke();
     ctx.beginPath(); ctx.moveTo(cx2, 0); ctx.lineTo(cx2, canvas.height); ctx.stroke();
 
+    canvas.style.imageRendering = 'pixelated';
     return canvas.toDataURL();
   } catch (err) {
     console.error('extractZoomRegion:', err);

@@ -66,8 +66,8 @@ export default function Home() {
   const [showSunBoundary,     setShowSunBoundary]     = useState(true);
   const [disableBoundaryCheck,setDisableBoundaryCheck]= useState(false);
   const [selectionMode,       setSelectionMode]       = useState('point');
-  const [zoomSize,            setZoomSize]            = useState(60);
-  const [zoomFactor,          setZoomFactor]          = useState(4);
+  const [zoomSize,            setZoomSize]            = useState(100);
+  const [zoomFactor,          setZoomFactor]          = useState(6);
 
   // ── Animation ────────────────────────────────────────────────────────────────
   const [animationRunning, setAnimationRunning] = useState(false);
