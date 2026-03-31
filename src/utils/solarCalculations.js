@@ -388,6 +388,24 @@ export const extractZoomRegion = (image, centerX, centerY, zoomSize = 60, zoomFa
     ctx.imageSmoothingQuality = 'low';
     ctx.drawImage(image, left, top, w, h, 0, 0, canvas.width, canvas.height);
 
+    // Percentile stretch on pixel luminance
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const px = imgData.data;
+    const numPixels = px.length / 4;
+    const lum = new Float32Array(numPixels);
+    for (let i = 0; i < numPixels; i++) {
+      lum[i] = 0.2126 * px[i * 4] + 0.7152 * px[i * 4 + 1] + 0.0722 * px[i * 4 + 2];
+    }
+    const { minVal, maxVal } = clipPercentile(lum, 1, 99);
+    const range = maxVal - minVal || 1;
+    for (let i = 0; i < numPixels; i++) {
+      const idx = i * 4;
+      px[idx]     = Math.min(255, Math.max(0, Math.round(((px[idx]     - minVal) / range) * 255)));
+      px[idx + 1] = Math.min(255, Math.max(0, Math.round(((px[idx + 1] - minVal) / range) * 255)));
+      px[idx + 2] = Math.min(255, Math.max(0, Math.round(((px[idx + 2] - minVal) / range) * 255)));
+    }
+    ctx.putImageData(imgData, 0, 0);
+
     // Crosshair
     const cx2 = canvas.width  / 2;
     const cy2 = canvas.height / 2;
