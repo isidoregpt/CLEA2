@@ -294,7 +294,6 @@ export const readFitsFile = async (file) => {
     const view = new DataView(dataBytes.buffer, dataBytes.byteOffset);
 
     // Find min/max for normalisation
-    let minVal = Infinity, maxVal = -Infinity;
     const rawPixels = new Float32Array(naxis1 * naxis2);
     for (let i = 0; i < naxis1 * naxis2; i++) {
       let raw;
@@ -307,9 +306,9 @@ export const readFitsFile = async (file) => {
       else                     raw = view.getInt16(offset, false);
       const phys = raw * bscale + bzero;
       rawPixels[i] = phys;
-      if (isFinite(phys)) { minVal = Math.min(minVal, phys); maxVal = Math.max(maxVal, phys); }
     }
 
+    const { minVal, maxVal } = clipPercentile(rawPixels, 0.5, 99.5);
     const range = maxVal - minVal || 1;
     const canvas = document.createElement('canvas');
     canvas.width = naxis1;
@@ -323,7 +322,7 @@ export const readFitsFile = async (file) => {
       for (let col = 0; col < naxis1; col++) {
         const srcIdx = row * naxis1 + col;
         const dstIdx = (canvasRow * naxis1 + col) * 4;
-        const norm = Math.round(((rawPixels[srcIdx] - minVal) / range) * 255);
+        const norm = Math.min(255, Math.max(0, Math.round(((rawPixels[srcIdx] - minVal) / range) * 255)));
         imgData.data[dstIdx]     = norm;
         imgData.data[dstIdx + 1] = norm;
         imgData.data[dstIdx + 2] = norm;
@@ -389,6 +388,24 @@ export const extractZoomRegion = (image, centerX, centerY, zoomSize = 60, zoomFa
     ctx.imageSmoothingQuality = 'low';
     ctx.drawImage(image, left, top, w, h, 0, 0, canvas.width, canvas.height);
 
+    // Percentile stretch on pixel luminance
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const px = imgData.data;
+    const numPixels = px.length / 4;
+    const lum = new Float32Array(numPixels);
+    for (let i = 0; i < numPixels; i++) {
+      lum[i] = 0.2126 * px[i * 4] + 0.7152 * px[i * 4 + 1] + 0.0722 * px[i * 4 + 2];
+    }
+    const { minVal, maxVal } = clipPercentile(lum, 1, 99);
+    const range = maxVal - minVal || 1;
+    for (let i = 0; i < numPixels; i++) {
+      const idx = i * 4;
+      px[idx]     = Math.min(255, Math.max(0, Math.round(((px[idx]     - minVal) / range) * 255)));
+      px[idx + 1] = Math.min(255, Math.max(0, Math.round(((px[idx + 1] - minVal) / range) * 255)));
+      px[idx + 2] = Math.min(255, Math.max(0, Math.round(((px[idx + 2] - minVal) / range) * 255)));
+    }
+    ctx.putImageData(imgData, 0, 0);
+
     // Crosshair
     const cx2 = canvas.width  / 2;
     const cy2 = canvas.height / 2;
@@ -403,4 +420,24 @@ export const extractZoomRegion = (image, centerX, centerY, zoomSize = 60, zoomFa
     console.error('extractZoomRegion:', err);
     return null;
   }
+};
+
+// ─── Percentile clip utility ────────────────────────────────────────────────
+export const clipPercentile = (data, lowPct = 0.5, highPct = 99.5) => {
+  const n = data.length;
+  const maxSamples = 10000;
+  let sampled;
+  if (n <= maxSamples) {
+    sampled = Float32Array.from(data);
+  } else {
+    sampled = new Float32Array(maxSamples);
+    const step = n / maxSamples;
+    for (let i = 0; i < maxSamples; i++) {
+      sampled[i] = data[Math.floor(i * step)];
+    }
+  }
+  sampled.sort();
+  const lowIdx  = Math.floor((lowPct / 100) * (sampled.length - 1));
+  const highIdx = Math.ceil((highPct / 100) * (sampled.length - 1));
+  return { minVal: sampled[lowIdx], maxVal: sampled[highIdx] };
 };
