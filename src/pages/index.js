@@ -61,7 +61,7 @@ export default function Home() {
   const [radiusCorrection,    setRadiusCorrection]    = useState(1.0);
   const [centerXOffset,       setCenterXOffset]       = useState(0);
   const [centerYOffset,       setCenterYOffset]       = useState(0);
-  const [detectionMethod,     setDetectionMethod]     = useState('center');
+  const [detectionMethod,     setDetectionMethod]     = useState('detect');
   const [contourThreshold,    setContourThreshold]    = useState(30);
   const [showSunBoundary,     setShowSunBoundary]     = useState(true);
   const [disableBoundaryCheck,setDisableBoundaryCheck]= useState(false);
@@ -214,9 +214,12 @@ export default function Home() {
 
         // Detect sun if no params yet
         if (!rec.sunParams) {
+          const assumeCentered = rec.isFits && forceFitsData
+            ? false
+            : detectionMethod === 'center';
           rec.sunParams = determineImageCenterAndRadius(
             rec.image,
-            detectionMethod === 'center',
+            assumeCentered,
             contourThreshold
           );
         }
@@ -229,6 +232,9 @@ export default function Home() {
     }
 
     if (anyLoaded) {
+      setRadiusCorrection(1.0);
+      setCenterXOffset(0);
+      setCenterYOffset(0);
       setImages(newImages);
       const sorted = Object.keys(newImages).sort();
       setSortedFilenames(sorted);
