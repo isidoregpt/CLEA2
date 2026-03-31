@@ -181,31 +181,57 @@ export const determineImageCenterAndRadius = (image, assumeCentered, threshold =
 
     const { data } = ctx.getImageData(0, 0, sw, sh);
 
-    let minX = sw, maxX = 0, minY = sh, maxY = 0;
-    let found = false;
-
+    // Build binary bright-pixel mask
+    const mask = new Uint8Array(sw * sh);
     for (let py = 0; py < sh; py++) {
       for (let px = 0; px < sw; px++) {
         const idx = (py * sw + px) * 4;
         const lum = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
-        if (lum > threshold) {
-          minX = Math.min(minX, px);
-          maxX = Math.max(maxX, px);
-          minY = Math.min(minY, py);
-          maxY = Math.max(maxY, py);
-          found = true;
+        if (lum > threshold) mask[py * sw + px] = 1;
+      }
+    }
+
+    // Find edge pixels (bright pixels with at least one dark neighbour)
+    const edgeX = [];
+    const edgeY = [];
+    for (let py = 1; py < sh - 1; py++) {
+      for (let px = 1; px < sw - 1; px++) {
+        if (!mask[py * sw + px]) continue;
+        if (!mask[(py - 1) * sw + px] || !mask[(py + 1) * sw + px] ||
+            !mask[py * sw + (px - 1)] || !mask[py * sw + (px + 1)]) {
+          edgeX.push(px);
+          edgeY.push(py);
         }
       }
     }
 
-    if (!found) throw new Error('No bright region found');
+    if (edgeX.length < 3) throw new Error('Not enough edge pixels');
+
+    // Centroid of edge pixels as centre estimate
+    let sumX = 0, sumY = 0;
+    for (let i = 0; i < edgeX.length; i++) {
+      sumX += edgeX[i];
+      sumY += edgeY[i];
+    }
+    const centX = sumX / edgeX.length;
+    const centY = sumY / edgeY.length;
+
+    // Median distance from centroid as radius estimate
+    const dists = new Float32Array(edgeX.length);
+    for (let i = 0; i < edgeX.length; i++) {
+      const dx = edgeX[i] - centX;
+      const dy = edgeY[i] - centY;
+      dists[i] = Math.sqrt(dx * dx + dy * dy);
+    }
+    dists.sort();
+    const medianRadius = dists[Math.floor(dists.length / 2)];
 
     // Convert back to full-resolution coords
-    const cx = ((minX + maxX) / 2) / SCALE;
-    const cy = ((minY + maxY) / 2) / SCALE;
-    const radius = Math.max((maxX - minX), (maxY - minY)) / (2 * SCALE);
+    const cx = centX / SCALE;
+    const cy = centY / SCALE;
+    const radius = medianRadius / SCALE;
 
-    return { cx, cy, radius: radius * 0.95 }; // slight inset
+    return { cx, cy, radius };
   } catch (e) {
     console.warn('Sun detection failed, using centre estimate:', e.message);
     return { cx: w / 2, cy: h / 2, radius: Math.min(w, h) * 0.45 };
