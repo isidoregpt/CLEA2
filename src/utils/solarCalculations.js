@@ -381,8 +381,9 @@ export const extractZoomRegion = (image, centerX, centerY, zoomSize = 60, zoomFa
     const h = bottom - top;
 
     const canvas = document.createElement('canvas');
-    canvas.width  = w * zoomFactor;
-    canvas.height = h * zoomFactor;
+    const dpr = window.devicePixelRatio || 2;
+    canvas.width  = w * zoomFactor * dpr;
+    canvas.height = h * zoomFactor * dpr;
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(image, left, top, w, h, 0, 0, canvas.width, canvas.height);
