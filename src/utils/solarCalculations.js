@@ -404,3 +404,23 @@ export const extractZoomRegion = (image, centerX, centerY, zoomSize = 60, zoomFa
     return null;
   }
 };
+
+// ─── Percentile clip utility ────────────────────────────────────────────────
+export const clipPercentile = (data, lowPct = 0.5, highPct = 99.5) => {
+  const n = data.length;
+  const maxSamples = 10000;
+  let sampled;
+  if (n <= maxSamples) {
+    sampled = Float32Array.from(data);
+  } else {
+    sampled = new Float32Array(maxSamples);
+    const step = n / maxSamples;
+    for (let i = 0; i < maxSamples; i++) {
+      sampled[i] = data[Math.floor(i * step)];
+    }
+  }
+  sampled.sort();
+  const lowIdx  = Math.floor((lowPct / 100) * (sampled.length - 1));
+  const highIdx = Math.ceil((highPct / 100) * (sampled.length - 1));
+  return { minVal: sampled[lowIdx], maxVal: sampled[highIdx] };
+};
