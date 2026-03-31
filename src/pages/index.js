@@ -232,6 +232,9 @@ export default function Home() {
     }
 
     if (anyLoaded) {
+      setRadiusCorrection(1.0);
+      setCenterXOffset(0);
+      setCenterYOffset(0);
       setImages(newImages);
       const sorted = Object.keys(newImages).sort();
       setSortedFilenames(sorted);
