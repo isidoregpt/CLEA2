@@ -294,7 +294,6 @@ export const readFitsFile = async (file) => {
     const view = new DataView(dataBytes.buffer, dataBytes.byteOffset);
 
     // Find min/max for normalisation
-    let minVal = Infinity, maxVal = -Infinity;
     const rawPixels = new Float32Array(naxis1 * naxis2);
     for (let i = 0; i < naxis1 * naxis2; i++) {
       let raw;
@@ -307,9 +306,9 @@ export const readFitsFile = async (file) => {
       else                     raw = view.getInt16(offset, false);
       const phys = raw * bscale + bzero;
       rawPixels[i] = phys;
-      if (isFinite(phys)) { minVal = Math.min(minVal, phys); maxVal = Math.max(maxVal, phys); }
     }
 
+    const { minVal, maxVal } = clipPercentile(rawPixels, 0.5, 99.5);
     const range = maxVal - minVal || 1;
     const canvas = document.createElement('canvas');
     canvas.width = naxis1;
@@ -323,7 +322,7 @@ export const readFitsFile = async (file) => {
       for (let col = 0; col < naxis1; col++) {
         const srcIdx = row * naxis1 + col;
         const dstIdx = (canvasRow * naxis1 + col) * 4;
-        const norm = Math.round(((rawPixels[srcIdx] - minVal) / range) * 255);
+        const norm = Math.min(255, Math.max(0, Math.round(((rawPixels[srcIdx] - minVal) / range) * 255)));
         imgData.data[dstIdx]     = norm;
         imgData.data[dstIdx + 1] = norm;
         imgData.data[dstIdx + 2] = norm;
